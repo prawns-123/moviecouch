@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Couchside: watch together</title>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{--curtain:#2b0a17;--pit:#16050d;--seat:#3a1222;--line:#5a2438;--paper:#f6ead2;--mut:#b49aa5;--bulb:#ffb627;--ok:#3fd6b4;--bad:#ff5d6c}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--pit);color:var(--paper);font:15px/1.45 Figtree,system-ui,sans-serif;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+button{background:var(--seat);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--bulb)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--bulb);outline-offset:2px}
+button.p{background:var(--bulb);color:#2b0a17;border:0;font-weight:600}
+input,select{background:var(--pit);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+h1,.logo{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;letter-spacing:.5px}
+.mut{color:var(--mut)}
+#lobby{min-height:100vh;display:grid;place-items:center;background:radial-gradient(700px 400px at 50% 0,#6a1a3a66,transparent),var(--curtain);padding:20px}
+.box{width:min(380px,100%);display:grid;gap:12px}
+.box h1{font-size:44px;margin:0;color:var(--bulb);text-shadow:0 0 24px #ffb62755}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}.row button{flex:0 0 auto}
+header{display:flex;gap:10px;align-items:center;padding:10px 18px;background:var(--curtain);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header .logo{font-size:20px;color:var(--bulb);margin-right:auto}
+.chip{border:1px dashed var(--bulb);border-radius:6px;padding:3px 10px;font-weight:600;letter-spacing:3px}
+.pill{border-radius:20px;padding:4px 12px;background:var(--seat);font-size:13px}.pill.ok{color:var(--ok)}.pill.warn{color:var(--bulb)}.pill.bad{color:var(--bad)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;padding:18px;max-width:1500px;margin:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}.side{height:520px!important}}
+.marq{height:20px;background:radial-gradient(circle,var(--bulb) 3px,transparent 4px) 0 50%/24px 20px repeat-x;filter:drop-shadow(0 0 5px var(--bulb))}
+.marq.warn{animation:fk .5s steps(2) infinite}.marq.bad{animation:fk .25s steps(2) infinite;filter:drop-shadow(0 0 5px var(--bad)) hue-rotate(-40deg)}
+@keyframes fk{50%{opacity:.25}}
+.stage{position:relative;background:#000;aspect-ratio:16/9;overflow:hidden;border-left:8px solid var(--curtain);border-right:8px solid var(--curtain)}
+.stage video{width:100%;height:100%;object-fit:contain;display:block}
+.empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--mut);pointer-events:none;text-align:center;padding:20px}
+.tap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:12px 20px}
+.fl{position:absolute;bottom:56px;font-size:36px;text-align:center;pointer-events:none;animation:up 2.6s ease-out forwards}
+.fl small{display:block;font:12px Figtree;color:#fff;background:#000a;border-radius:8px;padding:0 6px}
+@keyframes up{to{transform:translateY(-280px) scale(1.3);opacity:0}}
+@media(prefers-reduced-motion:reduce){.fl{animation-duration:.01s}.marq.warn,.marq.bad{animation:none}}
+.react{margin:12px 0;gap:6px}.react button{font-size:22px;padding:4px 10px;flex:1}
+.side{background:var(--curtain);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;height:calc(100vh - 100px);min-height:440px}
+#tabs{display:flex;border-bottom:1px solid var(--line)}#tabs button{flex:1;border:0;border-radius:0;background:none;padding:10px 2px;font-size:13px}
+#tabs button.on{border-bottom:2px solid var(--bulb);color:var(--bulb)}
+.pn{flex:1;overflow:auto;padding:12px;min-height:0}#p-chat{display:flex;flex-direction:column;gap:8px}
+#msgs{flex:1;overflow:auto;display:flex;flex-direction:column;gap:4px}.sys{color:var(--mut);font-style:italic;font-size:13px}.msg b{margin-right:4px}
+.it{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.it>div:first-child{flex:1;min-width:0}.it button{padding:4px 9px}
+.pr i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:600;color:#2b0a17;flex:0 0 28px}.pr.off{opacity:.45}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.chips button{padding:2px 10px;border-radius:20px;font-size:13px}.chips button.on{background:var(--bulb);color:#2b0a17}
+h4{margin:14px 0 4px;font-size:15px;color:var(--bulb)}
+.opt{position:relative;display:flex;justify-content:space-between;width:100%;margin:6px 0;overflow:hidden;text-align:left}.opt.me{border-color:var(--bulb)}
+.bar{position:absolute;inset:0 auto 0 0;background:#ffb62733;transition:width .3s}.opt span,.opt b{position:relative}
+</style></head><body>
+<div id="lobby"><div class="box">
+  <h1>Couchside</h1><p class="mut" style="margin:0">Press play together. Everyone sees the same frame at the same moment.</p>
+  <input id="name" placeholder="Your name" maxlength="20" autocomplete="off">
+  <button class="p" id="create">Create a room</button>
+  <div class="mut">Have a code or an invite link?</div>
+  <div class="row"><input id="code" placeholder="Room code" maxlength="4" autocomplete="off"><button id="join">Join room</button></div>
+  <p class="mut" style="font-size:13px;margin:0">The person who creates the room is the host. The room stays open while the host's page is open, or until the host passes the crown.</p>
+</div></div>
+
+<div id="app" hidden>
+<header><span class="logo">Couchside</span><span class="chip" id="rc"></span><button id="inv">Copy invite link</button><span class="pill" id="sync">connecting</span><button id="leave">Leave</button></header>
+<main>
+<section>
+  <div class="marq" id="m1"></div>
+  <div class="stage"><video id="v" controls playsinline></video><div class="empty" id="empty">The screen is dark. Pick a movie in the Discover tab.</div><div class="empty" id="err" hidden></div><button class="p tap" id="tap" hidden>Tap to join playback</button><div id="fx"></div></div>
+  <div class="marq" id="m2"></div>
+  <div class="row react" id="reacts"></div>
+  <h2 id="now" style="font-weight:600;margin:4px 0"></h2>
+</section>
+<aside class="side">
+  <nav id="tabs"><button class="on" data-t="chat">Chat</button><button data-t="queue">Queue</button><button data-t="disc">Discover</button><button data-t="poll">Polls</button><button data-t="ppl">People</button></nav>
+  <div class="pn" id="p-chat"><div id="msgs"></div><div class="row"><input id="ci" placeholder="Say something" maxlength="300" autocomplete="off"><button class="p" id="cs">Send</button></div></div>
+  <div class="pn" id="p-queue" hidden><div id="ql"></div></div>
+  <div class="pn" id="p-disc" hidden>
+    <input id="q" placeholder="Search movies (typos are fine)" autocomplete="off">
+    <div class="chips" id="gc"></div>
+    <select id="mr"><option value="0">Any rating</option><option value="6.5">Rating 6.5 and up</option><option value="7">Rating 7 and up</option><option value="8">Rating 8 and up</option></select>
+    <div id="dl"></div>
+  </div>
+  <div class="pn" id="p-poll" hidden>
+    <div id="pform"><button class="p" id="vn" style="width:100%">Vote on the next movie</button>
+      <h4>Or ask your own question</h4><input id="pq" placeholder="Question"><input id="po" placeholder="Options, separated by commas" style="margin:6px 0"><button id="pg">Start poll</button></div>
+    <div id="pact"></div>
+  </div>
+  <div class="pn" id="p-ppl" hidden><div id="pl"></div></div>
+</aside>
+</main></div>
+
+<script>
+const U='https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/';
+const FB={bbb:['https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4','https://media.w3.org/2010/05/bunny/movie.mp4'],
+ sintel:['https://download.blender.org/durian/trailer/sintel_trailer-480p.mp4','https://media.w3.org/2010/05/sintel/trailer.mp4'],
+ ed:['https://media.w3.org/2010/05/video/movie_300.mp4'],tos:['https://download.blender.org/demo/movies/ToS/tears_of_steel_720p.mov']};
+const C=[["bbb","Big Buck Bunny",2008,["Animation","Comedy"],7.8,10,"BigBuckBunny"],["ed","Elephants Dream",2006,["Animation","Sci-Fi"],6.9,11,"ElephantsDream"],["sintel","Sintel",2010,["Animation","Fantasy","Adventure"],8.1,15,"Sintel"],["tos","Tears of Steel",2012,["Sci-Fi","Action"],7.2,12,"TearsOfSteel"],["subaru","Subaru Outback on Street and Dirt",2013,["Cars","Adventure"],6.5,10,"SubaruOutbackOnStreetAndDirt"],["gti","Volkswagen GTI Review",2013,["Cars","Comedy"],6.2,8,"VolkswagenGTIReview"],["bullrun","We Are Going On Bullrun",2013,["Cars","Adventure"],6.8,5,"WeAreGoingOnBullrun"],["grand","What Car Can You Get For A Grand",2013,["Cars","Comedy"],6.0,8,"WhatCarCanYouGetForAGrand"],["fun","For Bigger Fun",2013,["Comedy","Short"],6.4,1,"ForBiggerFun"],["blazes","For Bigger Blazes",2013,["Action","Short"],6.6,1,"ForBiggerBlazes"]]
+ .map(([id,title,year,genre,rating,mins,f])=>({id,title,year,genre,rating,mins,srcs:[U+f+'.mp4',...(FB[id]||[]),'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4']}));
+const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hue=id=>`hsl(${[...id].reduce((a,c)=>a+c.charCodeAt(0),0)*47%360},70%,68%)`;
+const me=sessionStorage.cid||(sessionStorage.cid=Math.random().toString(36).slice(2,10));
+const newCode=()=>Array.from({length:4},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random()*32|0]).join('');
+let si=0,S=null,room,hostId,name,off=0,rtt=0,sup=0,last=-1,genre='All',H=null,peer=null,conn=null,smp=[],lostAt=0,rt=0;
+const v=$('#v'),mv=id=>C.find(m=>m.id===id);
+const want=()=>S.pb.playing?S.pb.pos+(Date.now()+off-S.pb.t)/1000:S.pb.pos;
+
+/* ===== HUB: runs in the host's browser. It is the single source of truth. ===== */
+const hsend=(m,ev,d)=>{if(!m.on)return;if(m.local)handle(ev,structuredClone(d));else if(m.conn&&m.conn.open)m.conn.send({ev,d})};
+const hb=(ev,d)=>H.m.forEach(m=>hsend(m,ev,d));
+const online=()=>[...H.m.values()].filter(m=>m.on);
+const snap=()=>({v:H.v,now:Date.now(),host:H.host,cur:H.cur,nonce:H.nonce,pb:H.pb,list:H.list,poll:H.poll,members:[...H.m.values()].map(m=>({id:m.id,name:m.name,on:!!m.on}))});
+const push=()=>{H.v++;hb('state',snap())};
+const log=x=>{H.chat.push(x);if(H.chat.length>100)H.chat.shift();hb('chat',x)};
+const say=t=>log({sys:1,t,ts:Date.now()});
+function hload(id){if(!mv(id))return;H.cur=id;H.nonce++;H.pb={playing:true,pos:0,t:Date.now()}}
+function hnext(){const id=H.list.shift();if(id)return hload(id);H.cur=null;H.nonce++;H.pb={playing:false,pos:0,t:Date.now()}}
+function closePoll(){const p=H.poll;if(!p)return;H.poll=null;const c=p.o.map(()=>0);Object.values(p.votes).forEach(i=>c[i]++);
+  const top=Math.max(...c);if(!top)return say('Poll closed with no votes');const o=p.o[c.indexOf(top)];
+  say(`Poll closed: "${o.t}" wins with ${top} vote${top==1?'':'s'}`);if(o.mv)H.cur?H.list.push(o.mv):hload(o.mv)}
+function drop(id){const m=H&&H.m.get(id);if(!m||m.on)return;H.m.delete(id);if(H.poll)delete H.poll.votes[id];say(`${m.name} left`);
+  if(online().length&&H.poll&&online().every(x=>x.id in H.poll.votes))closePoll();push()}
+function act(m,a){
+  const now=Date.now(),n=x=>Math.max(0,+x||0),live=H.cur&&a.nonce===H.nonce; // stale actions aimed at an old video are ignored
+  switch(a.type){
+    case'play':if(!live)return;H.pb={playing:true,pos:n(a.pos),t:now};break;
+    case'pause':if(!live)return;H.pb={playing:false,pos:n(a.pos),t:now};break;
+    case'seek':if(!live)return;H.pb={playing:H.pb.playing,pos:n(a.pos),t:now};break;
+    case'load':if(!mv(a.movie))return;hload(a.movie);break;
+    case'ended':if(!live)return;hnext();break; // every client reports 'ended'; only the first counts
+    case'enqueue':if(!mv(a.movie))return;if(!H.cur)hload(a.movie);else if(H.list.length<30)H.list.push(a.movie);break;
+    case'dequeue':{const i=H.list.indexOf(a.movie);if(i<0)return;H.list.splice(i,1);break}
+    case'react':hb('react',{e:String(a.e).slice(0,8),n:m.name});return;
+    case'chat':{const t=String(a.text||'').trim().slice(0,300);if(!t)return;log({n:m.name,id:m.id,t,ts:now});return}
+    case'transfer':{const t=H.m.get(a.to);if(H.host!==m.id||!t||!t.on||t.local)return;handoff(t);return}
+    case'poll':{if(H.poll)return;const o=(Array.isArray(a.opts)?a.opts:[]).slice(0,5).map(x=>({t:String(x.t||'').slice(0,60),mv:mv(x.mv)?x.mv:null})).filter(x=>x.t);
+      if(o.length<2)return;H.poll={q:String(a.q||'Vote').slice(0,80),o,votes:{},by:m.id};break}
+    case'vote':{const p=H.poll;if(!p||!(a.i>=0&&a.i<p.o.length))return;p.votes[m.id]=a.i|0;if(online().every(x=>x.id in p.votes))closePoll();break}
+    case'closepoll':if(H.poll&&(m.id===H.host||m.id===H.poll.by))closePoll();else return;break;
+    default:return}
+  push()}
+function handoff(t){ // host passes the crown: ship the room to `t`, step down, rejoin as a guest
+  const pos=H.pb.playing?H.pb.pos+(Date.now()-H.pb.t)/1000:H.pb.pos;
+  t.conn.send({ev:'handoff',d:{v:H.v,cur:H.cur,nonce:H.nonce,pb:{playing:H.pb.playing,pos},list:H.list,poll:H.poll,chat:H.chat,members:[...H.m.values()].map(m=>({id:m.id,name:m.name}))}});
+  say(`${t.name} is now the host`);
+  setTimeout(()=>{peer.destroy();H=null;S=null;becomeGuest()},400)}
+function hubData(c,d){
+  if(d.t==='join'){
+    if(!H.m.has(d.id)&&H.m.size>=50)return c.send({ev:'fatal',d:'This room is full.'});
+    let m=H.m.get(d.id);
+    if(m){clearTimeout(m.timer);if(m.conn&&m.conn!==c)m.conn.close()}else{m={id:d.id};H.m.set(d.id,m);say(`${d.name} joined`)}
+    m.conn=c;c.mid=d.id;m.on=true;m.name=String(d.name).slice(0,20)||'Guest';
+    hsend(m,'init',{chat:H.chat});push()}
+  else if(d.t==='act'){const m=H&&H.m.get(c.mid);if(m)act(m,d.a)}
+  else if(d.t==='ping')c.send({ev:'pong',d:{c:d.c,s:Date.now()}})}
+function hubClose(c){const m=H&&H.m.get(c.mid);if(!m||m.conn!==c)return;m.on=false;m.conn=null;push();m.timer=setTimeout(()=>drop(m.id),15000)} // 15s to reconnect
+
+/* ===== TRANSPORT (PeerJS: browsers connect directly to the host) ===== */
+function becomeHost(rs){
+  off=0;rtt=0;smp=[];peer=new Peer(hostId);
+  peer.on('open',()=>{
+    H={host:me,m:new Map(),cur:null,nonce:0,pb:{playing:false,pos:0,t:Date.now()},list:[],poll:null,chat:[],v:0};
+    if(rs){Object.assign(H,{cur:rs.cur,nonce:rs.nonce,pb:{playing:rs.pb.playing,pos:rs.pb.pos,t:Date.now()},list:rs.list,poll:rs.poll,chat:rs.chat,v:rs.v});
+      rs.members.forEach(x=>{if(x.id!==me){H.m.set(x.id,{id:x.id,name:x.name,on:false});H.m.get(x.id).timer=setTimeout(()=>drop(x.id),15000)}})}
+    const self={id:me,name,on:true,local:true};H.m.set(me,self);show();hsend(self,'init',{chat:H.chat});push()});
+  peer.on('connection',c=>{c.on('data',d=>H&&hubData(c,d));c.on('close',()=>hubClose(c))});
+  peer.on('disconnected',()=>{try{peer.reconnect()}catch{}});
+  peer.on('error',e=>{if(e.type!=='unavailable-id')return;peer.destroy();
+    if(rs)setTimeout(()=>becomeHost(rs),1500);else{room=newCode();hostId='couchside-'+room;becomeHost()}})}
+function becomeGuest(){
+  lostAt=0;peer=new Peer();peer.on('open',dial);
+  peer.on('disconnected',()=>{try{peer.reconnect()}catch{}});
+  peer.on('error',e=>{if(e.type==='peer-unavailable')retry()})}
+function dial(){
+  rt=0;smp=[];const c=conn=peer.connect(hostId,{reliable:true});
+  c.on('open',()=>{lostAt=0;c.send({t:'join',id:me,name});tsync()});
+  c.on('data',d=>handle(d.ev,d.d));
+  c.on('close',()=>{if(c===conn)retry()})}
+function retry(){ // lost the host: keep trying for 25s (covers brief drops and host handoff)
+  if(rt||H)return;rt=1;lostAt=lostAt||Date.now();$('#sync').textContent='reconnecting...';$('#sync').className='pill warn';
+  if(Date.now()-lostAt>25000){alert('Could not reach the host. The room may have closed, or the code is wrong.');return leave()}
+  setTimeout(()=>{rt=0;if(peer&&!peer.destroyed)dial()},1500)}
+function tsync(){if(H)return;for(let i=0;i<3;i++)setTimeout(()=>conn&&conn.open&&conn.send({t:'ping',c:Date.now()}),i*150)}
+function handle(ev,d){
+  if(ev==='init'){$('#msgs').innerHTML='';d.chat.forEach(addChat)}
+  else if(ev==='state'){if(!H&&!smp.length)off=d.now-Date.now();S=d;render();apply()}
+  else if(ev==='chat')addChat(d);else if(ev==='react')fl(d);
+  else if(ev==='pong'){const t1=Date.now(),r=t1-d.c;smp.push({r,o:d.s+r/2-t1});if(smp.length>5)smp.shift();const b=smp.reduce((a,x)=>x.r<a.r?x:a);off=b.o;rtt=b.r}
+  else if(ev==='fatal'){alert(d);leave()}
+  else if(ev==='handoff'){peer.destroy();conn=null;S=null;becomeHost(d)}}
+function post(a){a.nonce=a.nonce??(S&&S.nonce);if(H)act(H.m.get(me),a);else if(conn&&conn.open)conn.send({t:'act',a})}
+
+/* ===== PLAYBACK SYNC: clients chase the host's clock ===== */
+function apply(){
+  if(S.nonce!==last){last=S.nonce;sup=Date.now()+900;const c=mv(S.cur);$('#err').hidden=true;si=0;if(c)v.src=c.srcs[0];else{v.removeAttribute('src');v.load()}}
+  fix(true)}
+function fix(hard){
+  if(!S)return;let t=H?'hosting':`${rtt}ms ping`,cls='ok',a=0;
+  if(S.cur&&v.readyState>=1){
+    const w=Math.min(want(),v.duration||1e9),d=v.currentTime-w;a=Math.abs(d);
+    if(S.pb.playing){
+      if(v.paused){sup=Date.now()+900;v.play().then(()=>$('#tap').hidden=true).catch(()=>$('#tap').hidden=false)}
+      if(a>.4||(hard&&a>.15)){sup=Date.now()+900;v.currentTime=w;v.playbackRate=1;a=0}
+      else v.playbackRate=a>.06?(d>0?.93:1.07):1;
+    }else{
+      if(!v.paused){sup=Date.now()+900;v.pause()}
+      if(a>.15){sup=Date.now()+900;v.currentTime=w;a=0}
+      v.playbackRate=1}
+    t=`in sync within ${Math.round(a*1000)}ms${H?'':', '+rtt+'ms ping'}`;cls=a>.4?'bad':a>.15?'warn':'ok'}
+  $('#sync').textContent=t;$('#sync').className='pill '+cls;$('#m1').className=$('#m2').className='marq '+(cls==='ok'?'':cls)}
+const user=t=>{if(Date.now()<sup||!S||!S.cur)return;post({type:t,pos:v.currentTime})};
+v.onplay=()=>user('play');v.onpause=()=>{if(!v.ended)user('pause')};v.onseeked=()=>user('seek');
+v.onended=()=>S&&si===0&&post({type:'ended'}); // only the main source may advance the queue
+v.onloadedmetadata=()=>{$('#err').hidden=true;S&&fix(true)};
+v.onerror=()=>{const c=S&&mv(S.cur);if(!c)return;const e=$('#err');e.hidden=false;
+  if(++si<c.srcs.length){e.textContent='That source failed to load. Trying a backup...';sup=Date.now()+900;v.src=c.srcs[si]}
+  else e.textContent='This video could not be loaded. Check your internet connection or pick another movie.'};
+$('#tap').onclick=()=>fix(true);
+setInterval(()=>fix(),500);setInterval(tsync,5000);
+
+/* ===== UI ===== */
+function render(){
+  const h=S.host===me,cur=mv(S.cur);
+  $('#rc').textContent=room;$('#now').textContent=cur?`${cur.title} (${cur.year})`:'';$('#empty').hidden=!!cur;
+  document.querySelector('[data-t=ppl]').textContent=`People (${S.members.filter(m=>m.on).length})`;
+  $('#pl').innerHTML=S.members.map(m=>`<div class="it pr ${m.on?'':'off'}"><i style="background:${hue(m.id)}">${esc(m.name[0]||'?').toUpperCase()}</i><div>${esc(m.name)}${m.id===me?' (you)':''}${m.on?'':' (reconnecting)'}</div>${m.id===S.host?'<b>Host</b>':h&&m.on?`<button data-a="transfer" data-id="${m.id}">Make host</button>`:''}</div>`).join('');
+  $('#ql').innerHTML=S.list.length?S.list.map(id=>{const m=mv(id);return `<div class="it"><div>${esc(m.title)}</div><button data-a="load" data-m="${id}">Play now</button><button data-a="dequeue" data-m="${id}">Remove</button></div>`}).join(''):'<p class="mut">The queue is empty. Add movies from Discover.</p>';
+  pollUI(h);disc()}
+const card=m=>`<div class="it"><div><b>${esc(m.title)}</b><div class="mut">${m.year}, ${m.genre.join('/')}, rated ${m.rating}, ${m.mins} min</div></div><button data-a="load" data-m="${m.id}">Play</button><button data-a="enqueue" data-m="${m.id}">Queue</button></div>`;
+const lev=(a,b)=>{const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]};
+function fz(q,t){const T=t.toLowerCase().split(/\W+/);let tot=0;for(const w of q.toLowerCase().split(/\s+/)){let b=0;for(const x of T){let k=x.includes(w)?90:0;if(!k){const d=lev(w,x.slice(0,w.length+1));if(d<=(w.length>5?2:1))k=60-d*10}b=Math.max(b,k)}if(!b)return 0;tot+=b}return tot}
+function disc(){
+  if(!S)return;const q=$('#q').value.trim(),mr=+$('#mr').value,used=new Set([S.cur,...S.list]);
+  const L=C.filter(m=>(genre==='All'||m.genre.includes(genre))&&m.rating>=mr).map(m=>({m,s:q?fz(q,m.title+' '+m.genre.join(' ')):1})).filter(x=>x.s).sort((a,b)=>b.s-a.s||b.m.rating-a.m.rating).map(x=>x.m);
+  let rec='';
+  if(!q&&genre==='All'&&!mr){const w={};[...used].forEach(id=>mv(id)&&mv(id).genre.forEach(g=>w[g]=(w[g]||0)+1)); // favour genres already in the room
+    const R=C.filter(m=>!used.has(m.id)).map(m=>[m,m.genre.reduce((a,g)=>a+(w[g]||0),0)+m.rating/10]).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0]);
+    rec='<h4>Picked for this room</h4>'+R.map(card).join('')+'<h4>All movies</h4>'}
+  $('#dl').innerHTML=(rec+L.map(card).join(''))||'<p class="mut">No matches. Try another word or lower the rating.</p>'}
+function pollUI(h){
+  const p=S.poll;$('#pform').hidden=!!p;if(!p){$('#pact').innerHTML='';return}
+  const c=p.o.map(()=>0);Object.values(p.votes).forEach(i=>c[i]++);const tot=Object.keys(p.votes).length||1;
+  $('#pact').innerHTML=`<h4>${esc(p.q)}</h4>`+p.o.map((o,i)=>`<button class="opt ${p.votes[me]===i?'me':''}" data-a="vote" data-i="${i}"><i class="bar" style="width:${c[i]/tot*100}%"></i><span>${esc(o.t)}</span><b>${c[i]}</b></button>`).join('')+((h||p.by===me)?'<button data-a="closepoll">Close poll</button>':'<p class="mut">It closes when everyone has voted.</p>')}
+function addChat(m){const d=document.createElement('div');d.className=m.sys?'sys':'msg';d.innerHTML=m.sys?esc(m.t):`<b style="color:${hue(m.id)}">${esc(m.n)}</b>${esc(m.t)}`;$('#msgs').append(d);$('#msgs').scrollTop=1e9}
+function fl(d){const s=document.createElement('div');s.className='fl';s.style.left=8+Math.random()*80+'%';s.innerHTML=`${esc(d.e)}<small>${esc(d.n)}</small>`;$('#fx').append(s);setTimeout(()=>s.remove(),2700)}
+document.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=b.dataset;post({type:d.a,movie:d.m,to:d.id,e:d.e,i:d.i!=null?+d.i:undefined})};
+$('#reacts').innerHTML=['🔥','😂','😮','❤️','👏','😢'].map(e=>`<button data-a="react" data-e="${e}" aria-label="React ${e}">${e}</button>`).join('');
+$('#tabs').onclick=e=>{const t=e.target.dataset.t;if(!t)return;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('.pn').forEach(p=>p.hidden=p.id!=='p-'+t)};
+const sendChat=()=>{const t=$('#ci').value.trim();if(t){post({type:'chat',text:t});$('#ci').value=''}};
+$('#cs').onclick=sendChat;$('#ci').onkeydown=e=>e.key==='Enter'&&sendChat();$('#q').oninput=$('#mr').onchange=disc;
+$('#vn').onclick=()=>{const pool=C.filter(m=>m.id!==S.cur&&!S.list.includes(m.id)).sort(()=>Math.random()-.5).slice(0,3);post({type:'poll',q:'What should we watch next?',opts:pool.map(m=>({t:m.title,mv:m.id}))})};
+$('#pg').onclick=()=>{post({type:'poll',q:$('#pq').value||'Quick poll',opts:$('#po').value.split(',').map(t=>({t:t.trim()}))});$('#pq').value=$('#po').value=''};
+const link=()=>location.href.split('?')[0].split('#')[0]+'?room='+room;
+$('#inv').onclick=()=>{const u=link(),ask=()=>prompt('Copy this link:',u);navigator.clipboard?navigator.clipboard.writeText(u).then(()=>{$('#inv').textContent='Copied';setTimeout(()=>$('#inv').textContent='Copy invite link',1500)}).catch(ask):ask()};
+function leave(){try{peer&&peer.destroy()}catch{}sessionStorage.removeItem('room');location.href=location.href.split('?')[0]}$('#leave').onclick=leave;
+function show(){$('#lobby').hidden=true;$('#app').hidden=false;history.replaceState(0,'','?room='+room)}
+
+/* ===== LOBBY ===== */
+function start(code,asHost){
+  if(typeof Peer==='undefined')return alert('Could not load the connection library. Check your internet and reload.');
+  name=$('#name').value.trim()||'Guest '+me.slice(0,3);room=code.toUpperCase();hostId='couchside-'+room;sessionStorage.name=name;
+  if(asHost){sessionStorage.removeItem('room');becomeHost()}
+  else{sessionStorage.room=room;show();becomeGuest()}}
+$('#create').onclick=()=>start(newCode(),true);
+$('#join').onclick=()=>/^[A-Za-z0-9]{4}$/.test($('#code').value.trim())?start($('#code').value.trim(),false):$('#code').focus();
+$('#gc').innerHTML=['All',...new Set(C.flatMap(m=>m.genre))].map(g=>`<button class="${g==='All'?'on':''}" data-g="${g}">${g}</button>`).join('');
+$('#gc').onclick=e=>{const g=e.target.dataset.g;if(!g)return;genre=g;document.querySelectorAll('#gc button').forEach(b=>b.classList.toggle('on',b.dataset.g===g));disc()};
+{const p=new URLSearchParams(location.search).get('room'),sr=sessionStorage.room;$('#name').value=sessionStorage.name||'';if(p)$('#code').value=p;
+ if(sr&&sessionStorage.name&&(!p||p===sr))start(sr,false);else if(p&&sessionStorage.name)$('#join').focus();else $('#name').focus()}
+</script></body></html>
